@@ -43,4 +43,5 @@ jobs:
             # composer install --no-dev --optimize-autoloader
             
             # Melakukan migrasi database (jika ada migrasi baru):
-            # php spark migrate
+            php spark migrate
+

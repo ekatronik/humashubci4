@@ -44,6 +44,9 @@ class Home extends BaseController
         } elseif ($cleanPath === 'rss') {
             $title = "Sindikasi Warta Kampus (RSS)";
             $description = "Feed sindikasi berita dan warta terhangat seputar aktivitas akademik UIN Ar-Raniry.";
+        } elseif ($cleanPath === 'akreditasi') {
+            $title = "Portal Informasi Akreditasi Prodi";
+            $description = "Portal informasi peringkat akreditasi program studi UIN Ar-Raniry Banda Aceh.";
         } elseif ($cleanPath === 'pencarian') {
             $q = $this->request->getVar('q') ?? '';
             if ($q) {

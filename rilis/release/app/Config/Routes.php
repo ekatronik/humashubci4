@@ -14,6 +14,7 @@ $routes->get('kliping/(:any)', 'Home::serveFrontend');
 $routes->get('dokumentasi', 'Home::serveFrontend');
 $routes->get('dokumentasi/(:any)', 'Home::serveFrontend');
 $routes->get('rss', 'Home::serveFrontend');
+$routes->get('akreditasi', 'Home::serveFrontend');
 $routes->get('pencarian', 'Home::serveFrontend');
 $routes->get('login', 'Home::serveFrontend');
 $routes->get('dashboard', 'Home::serveFrontend');
@@ -43,6 +44,12 @@ $routes->group('api', function($routes) {
         $routes->get('stats', 'Api\PublicController::stats');
         $routes->get('stats-visual', 'Api\PublicController::statsVisual');
         $routes->get('khatib-schedule', 'Api\PublicController::khatibSchedule');
+        $routes->get('settings', 'Api\PublicController::settings');
+        
+        // Public Accreditation data
+        $routes->get('accreditation/study-programs', 'Api\PublicController::listProdis');
+        $routes->get('accreditation/reports', 'Api\PublicController::reports');
+        $routes->get('accreditation/faculties', 'Api\PublicController::listFaculties');
     });
 
     // 2. Endpoint Terproteksi JWT (Admin)
@@ -119,6 +126,8 @@ $routes->group('api', function($routes) {
         $routes->get('system/backup-db', 'Api\System::backupDb', ['filter' => ['jwt', 'role:system']]);
         $routes->get('system/backup-files', 'Api\System::backupFiles', ['filter' => ['jwt', 'role:system']]);
         $routes->post('system/update-zip', 'Api\System::updateZip', ['filter' => ['jwt', 'role:system']]);
+        $routes->get('system/settings', 'Api\System::getSettings', ['filter' => ['jwt', 'role:system']]);
+        $routes->post('system/settings', 'Api\System::updateSettings', ['filter' => ['jwt', 'role:system']]);
 
         // ── Manajemen User (CRUD) ────────────────────────────────
         $routes->get('users', 'Api\Users::index', ['filter' => ['jwt', 'role:users']]);
@@ -127,6 +136,32 @@ $routes->group('api', function($routes) {
         $routes->put('users/(:num)', 'Api\Users::update/$1', ['filter' => ['jwt', 'role:users']]);
         $routes->post('users/(:num)', 'Api\Users::update/$1', ['filter' => ['jwt', 'role:users']]);
         $routes->put('roles/(:num)/permissions', 'Api\Users::updateRolePermissions/$1', ['filter' => ['jwt', 'role:users']]);
+
+        // ── Modul Akreditasi (Prodi & Kampus) ───────────────────
+        $routes->get('accreditation/stats', 'Api\Accreditation::stats', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->get('accreditation/campus', 'Api\Accreditation::getCampus', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->post('accreditation/campus', 'Api\Accreditation::updateCampus', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->get('accreditation/faculties', 'Api\Accreditation::listFaculties', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->post('accreditation/faculties', 'Api\Accreditation::createFaculty', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->put('accreditation/faculties/(:num)', 'Api\Accreditation::updateFaculty/$1', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->delete('accreditation/faculties/(:num)', 'Api\Accreditation::deleteFaculty/$1', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->get('accreditation/study-programs', 'Api\Accreditation::listProdis', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->get('accreditation/study-programs/template', 'Api\Accreditation::downloadTemplate', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->post('accreditation/study-programs/import', 'Api\Accreditation::importProdisCsv', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->post('accreditation/study-programs', 'Api\Accreditation::createProdi', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->post('accreditation/study-programs/(:num)', 'Api\Accreditation::updateProdi/$1', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->put('accreditation/study-programs/(:num)', 'Api\Accreditation::updateProdi/$1', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->delete('accreditation/study-programs/(:num)', 'Api\Accreditation::deleteProdi/$1', ['filter' => ['jwt', 'role:accreditation']]);
+        $routes->get('accreditation/reports', 'Api\Accreditation::reports', ['filter' => ['jwt', 'role:accreditation']]);
+
+        // ── Modul Khutbah Jumat ────────────────────────────────
+        $routes->get('khutbah/sermons', 'Api\FridaySermon::listSermons', ['filter' => ['jwt', 'role:khutbah']]);
+        $routes->post('khutbah/sermons', 'Api\FridaySermon::createSermon', ['filter' => ['jwt', 'role:khutbah']]);
+        $routes->post('khutbah/sermons/bulk', 'Api\FridaySermon::bulkCreateSermons', ['filter' => ['jwt', 'role:khutbah']]);
+        $routes->post('khutbah/sermons/(:num)', 'Api\FridaySermon::updateSermon/$1', ['filter' => ['jwt', 'role:khutbah']]);
+        $routes->put('khutbah/sermons/(:num)', 'Api\FridaySermon::updateSermon/$1', ['filter' => ['jwt', 'role:khutbah']]);
+        $routes->delete('khutbah/sermons/(:num)', 'Api\FridaySermon::deleteSermon/$1', ['filter' => ['jwt', 'role:khutbah']]);
     });
 });
+
 
