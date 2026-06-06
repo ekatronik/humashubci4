@@ -96,6 +96,22 @@ function main() {
     console.log('📝 Adjusted paths in install.php.');
   }
 
+  // 5. Modify paths in spark
+  const sparkPath = path.join(releaseDir, 'spark');
+  if (fs.existsSync(sparkPath)) {
+    let sparkContent = fs.readFileSync(sparkPath, 'utf8');
+    sparkContent = sparkContent.replace(
+      "define('FCPATH', __DIR__ . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR);",
+      "define('FCPATH', __DIR__ . DIRECTORY_SEPARATOR);"
+    );
+    sparkContent = sparkContent.replace(
+      "require FCPATH . '../app/Config/Paths.php';",
+      "require FCPATH . 'app/Config/Paths.php';"
+    );
+    fs.writeFileSync(sparkPath, sparkContent, 'utf8');
+    console.log('📝 Adjusted paths in spark.');
+  }
+
   console.log('✅ Reorganization completed successfully!');
 }
 
