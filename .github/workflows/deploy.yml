@@ -1,0 +1,49 @@
+name: Deploy to CloudPanel
+
+on:
+  push:
+    branches:
+      - online-rilis
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.SSH_PORT || '22' }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+
+      - name: Deploy files via rsync
+        run: |
+          rsync -avz --delete \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.env' \
+            --exclude 'writable/cache/*' \
+            --exclude 'writable/logs/*' \
+            --exclude 'writable/session/*' \
+            -e "ssh -p ${{ secrets.SSH_PORT || '22' }} -o StrictHostKeyChecking=no" \
+            ./ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.SSH_PATH }}
+
+      - name: Run post-deployment commands
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ secrets.SSH_PATH }}
+            # Jika menggunakan composer di server hosting (opsional):
+            # composer install --no-dev --optimize-autoloader
+            
+            # Melakukan migrasi database (jika ada migrasi baru):
+            php spark migrate
+
