@@ -17,7 +17,14 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, json
 
+      - name: Install Composer Dependencies
+        run: composer update --no-dev --optimize-autoloader
 
       - name: Deploy files via rsync
         run: |
@@ -40,9 +47,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ${{ secrets.SSH_PATH }}
-            # Jika menggunakan composer di server hosting (opsional):
-            # composer install --no-dev --optimize-autoloader
             
             # Melakukan migrasi database (jika ada migrasi baru):
             php spark migrate
-
