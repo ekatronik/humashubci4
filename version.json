@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
-  "build_date": "2026-05-25",
-  "changelog": "Versi awal aplikasi Humas Hub dengan modul Berita, Kliping, Dokumentasi, dan RSS Aggregator."
+  "version": "1.1",
+  "build_date": "2026-06-06",
+  "changelog": "Versi 1.1: Pembaruan fitur-fitur, perbaikan modul-modul utama, dan migrasi tabel database baru."
 }

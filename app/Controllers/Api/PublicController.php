@@ -672,61 +672,220 @@ class PublicController extends BaseApiController
      */
     public function khatibSchedule()
     {
-        $today = time();
-        $dayOfWeek = date('w', $today);
-        if ($dayOfWeek == 5) {
-            $fridayDate = date('d F Y', $today);
-        } else {
-            $daysToFriday = (5 - $dayOfWeek + 7) % 7;
-            $fridayDate = date('d F Y', strtotime("+$daysToFriday days", $today));
+        $sermonModel = new \App\Models\FridaySermonModel();
+        $todayStr = date('Y-m-d');
+
+        // 1. Find nearest Friday date in the future or today
+        $nearestDateRow = $sermonModel->where('date >=', $todayStr)
+                                      ->orderBy('date', 'ASC')
+                                      ->first();
+
+        if (!$nearestDateRow) {
+            // Fallback to newest past schedule
+            $nearestDateRow = $sermonModel->orderBy('date', 'DESC')->first();
         }
 
+        if ($nearestDateRow) {
+            $targetDate = $nearestDateRow['date'];
+        } else {
+            // Hard fallback if database is completely empty: calculate upcoming calendar Friday
+            $today = time();
+            $dayOfWeek = date('w', $today);
+            if ($dayOfWeek == 5) {
+                $targetDate = date('Y-m-d', $today);
+            } else {
+                $daysToFriday = (5 - $dayOfWeek + 7) % 7;
+                $targetDate = date('Y-m-d', strtotime("+$daysToFriday days", $today));
+            }
+        }
+
+        // 2. Fetch main sermon (Fathun Qarib)
+        $mainSermon = $sermonModel->where('date', $targetDate)
+                                  ->where('mosque_type', 'fathun_qarib')
+                                  ->first();
+
+        // 3. Fetch other sermons
+        $otherSermons = $sermonModel->where('date', $targetDate)
+                                    ->where('mosque_type', 'other')
+                                    ->findAll();
+
+        // Format Date to "d F Y" in Indonesian
+        $months = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+        $time = strtotime($targetDate);
+        $formattedDate = date('d', $time) . ' ' . $months[(int)date('m', $time)] . ' ' . date('Y', $time);
+
         $schedule = [
-            'date' => $fridayDate,
-            'main' => [
-                'mosque_name'   => 'Masjid Fathun Qarib UIN Ar-Raniry',
-                'location'      => 'Kopelma Darussalam (Kampus UIN)',
-                'khatib'        => 'Dr. H. Mujiburrahman, M.Ag',
-                'title'         => 'Membangun Generasi Rabbani Berkarakter Qur\'ani di Era Digital',
-                'imam'          => 'Tgk. Syarifuddin, S.Ag',
-                'muadzin'       => 'Tgk. M. Habil',
-                'note'          => 'Khatib utama merupakan Rektor UIN Ar-Raniry Banda Aceh.'
-            ],
-            'others' => [
-                [
-                    'mosque_name' => 'Masjid Raya Baiturrahman',
-                    'location'    => 'Pusat Kota Banda Aceh',
-                    'khatib'      => 'Prof. Dr. Tgk. H. Syahrizal Abbas, MA',
-                    'title'       => 'Pentingnya Menjaga Ukhuwah Islamiyah dan Persatuan Umat',
-                    'imam'        => 'Tgk. H. Ridwan Ibrahim, S.Ag'
-                ],
-                [
-                    'mosque_name' => 'Masjid Kopelma Darussalam',
-                    'location'    => 'Lingkungan Kampus Darussalam',
-                    'khatib'      => 'Dr. Tgk. H. Muhammad Yasir Yusuf, MA',
-                    'title'       => 'Konsep Zakat Produktif untuk Pemberdayaan Ekonomi Umat',
-                    'imam'        => 'Tgk. H. Munawir, Lc'
-                ],
-                [
-                    'mosque_name' => 'Masjid Jamik Syiah Kuala',
-                    'location'    => 'Kopelma Darussalam',
-                    'khatib'      => 'Tgk. H. Fakhruddin Lahmuddin, M.Pd',
-                    'title'       => 'Meneladani Karakter Kepemimpinan Rasulullah SAW',
-                    'imam'        => 'Tgk. H. Zulkarnain'
-                ],
-                [
-                    'mosque_name' => 'Masjid Al-Markaz Islami Blower',
-                    'location'    => 'Sukaramai, Banda Aceh',
-                    'khatib'      => 'Tgk. H. Masrul Aidi, Lc',
-                    'title'       => 'Tantangan Moral dan Degradasi Akhlak Remaja di Era Globalisasi',
-                    'imam'        => 'Tgk. Muhammad Siddiq'
-                ]
-            ]
+            'date' => $formattedDate,
+            'main' => $mainSermon ? [
+                'mosque_name' => 'Masjid Fathun Qarib UIN Ar-Raniry',
+                'location'    => 'Kopelma Darussalam (Kampus UIN)',
+                'khatib'      => $mainSermon['khatib'],
+                'title'       => 'Membangun Generasi Rabbani di Era Digital',
+                'imam'        => $mainSermon['imam'] ?: '-',
+                'muadzin'     => $mainSermon['muazzin'] ?: '-',
+                'note'        => 'Khatib Utama Masjid Utama UIN Ar-Raniry.'
+            ] : null,
+            'others' => array_map(function($s) {
+                return [
+                    'mosque_name' => $s['mosque_name'],
+                    'location'    => 'Seputaran Kampus / Banda Aceh',
+                    'khatib'      => $s['khatib'],
+                    'title'       => 'Jadwal Khutbah Jumat seputaran kampus.'
+                ];
+            }, $otherSermons)
         ];
 
         return $this->respond([
             'status' => 'success',
             'data'   => $schedule
+        ]);
+    }
+
+    /**
+     * Mengambil Pengaturan Aplikasi secara Publik (Identity & SEO)
+     * GET /api/public/settings
+     */
+    public function settings()
+    {
+        $settingModel = new \App\Models\SettingModel();
+        
+        $keys = [
+            'app_name',
+            'app_subtitle',
+            'app_description',
+            'app_footer',
+            'app_logo',
+            'app_favicon',
+            'seo_title',
+            'seo_keywords',
+            'seo_author',
+            'seo_image'
+        ];
+        
+        $data = [];
+        foreach ($keys as $key) {
+            $data[$key] = $settingModel->getVal($key, '');
+        }
+        
+        return $this->respond([
+            'status' => 'success',
+            'data'   => $data
+        ]);
+    }
+
+    /**
+     * GET /api/public/accreditation/study-programs
+     */
+    public function listProdis()
+    {
+        $prodiModel = new \App\Models\StudyProgramModel();
+        
+        $search = $this->request->getGet('search');
+        $facultyId = $this->request->getGet('faculty_id');
+        $jenjang = $this->request->getGet('jenjang');
+        $akreditasi = $this->request->getGet('akreditasi_sekarang');
+        $jalurMasuk = $this->request->getGet('jalur_masuk');
+
+        $builder = $prodiModel->select('study_programs.*, faculties.nama_fakultas, faculties.singkatan as singkatan_fakultas')
+            ->join('faculties', 'faculties.id = study_programs.faculty_id');
+
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('study_programs.nama_prodi', $search)
+                ->orLike('faculties.nama_fakultas', $search)
+                ->orLike('faculties.singkatan', $search)
+                ->groupEnd();
+        }
+
+        if (!empty($facultyId)) {
+            $builder->where('study_programs.faculty_id', (int)$facultyId);
+        }
+
+        if (!empty($jenjang)) {
+            $builder->where('study_programs.jenjang', $jenjang);
+        }
+
+        if (!empty($akreditasi)) {
+            $builder->where('study_programs.akreditasi_sekarang', $akreditasi);
+        }
+
+        if (!empty($jalurMasuk)) {
+            $builder->like('study_programs.jalur_masuk', $jalurMasuk);
+        }
+
+        $prodis = $builder->orderBy('study_programs.nama_prodi', 'ASC')->findAll();
+
+        return $this->respond([
+            'status' => 'success',
+            'data'   => $prodis
+        ]);
+    }
+
+    /**
+     * GET /api/public/accreditation/reports
+     */
+    public function reports()
+    {
+        $facultyModel = new \App\Models\FacultyModel();
+        $prodiModel   = new \App\Models\StudyProgramModel();
+
+        $totalFaculties = $facultyModel->countAllResults();
+        $totalProdis    = $prodiModel->countAllResults();
+        $totalUnggul    = $prodiModel->where('akreditasi_sekarang', 'Unggul')->countAllResults();
+
+        // 1. Accreditation ratio
+        $grades = ['Unggul', 'Baik Sekali', 'Baik'];
+        $accreditationRatio = [];
+        foreach ($grades as $g) {
+            $accreditationRatio[$g] = $prodiModel->where('akreditasi_sekarang', $g)->countAllResults();
+        }
+
+        // 2. Jenjang ratio
+        $jenjangs = ['D4', 'S1', 'S2', 'S3', 'Profesi'];
+        $jenjangRatio = [];
+        foreach ($jenjangs as $j) {
+            $jenjangRatio[$j] = $prodiModel->where('jenjang', $j)->countAllResults();
+        }
+
+        // 3. Prodis per faculty
+        $faculties = $facultyModel->orderBy('nama_fakultas', 'ASC')->findAll();
+        $prodiPerFaculty = [];
+        foreach ($faculties as $fac) {
+            $prodiPerFaculty[] = [
+                'id'            => $fac['id'],
+                'nama_fakultas' => $fac['nama_fakultas'],
+                'singkatan'     => $fac['singkatan'],
+                'count'         => $prodiModel->where('faculty_id', $fac['id'])->countAllResults()
+            ];
+        }
+
+        return $this->respond([
+            'status' => 'success',
+            'data'   => [
+                'total_faculties'     => $totalFaculties,
+                'total_prodis'        => $totalProdis,
+                'total_unggul'        => $totalUnggul,
+                'accreditation_ratio' => $accreditationRatio,
+                'jenjang_ratio'       => $jenjangRatio,
+                'prodi_per_faculty'   => $prodiPerFaculty
+            ]
+        ]);
+    }
+
+    /**
+     * GET /api/public/accreditation/faculties
+     */
+    public function listFaculties()
+    {
+        $facultyModel = new \App\Models\FacultyModel();
+        $faculties = $facultyModel->orderBy('nama_fakultas', 'ASC')->findAll();
+        return $this->respond([
+            'status' => 'success',
+            'data'   => $faculties
         ]);
     }
 }

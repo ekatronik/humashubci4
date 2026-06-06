@@ -334,6 +334,196 @@ class System extends BaseApiController
     }
 
     /**
+     * GET /api/admin/system/settings
+     * Mengambil pengaturan aplikasi (identitas, logo, favicon, SEO)
+     */
+    public function getSettings()
+    {
+        $settingModel = new \App\Models\SettingModel();
+        
+        $keys = [
+            'app_name',
+            'app_subtitle',
+            'app_description',
+            'app_footer',
+            'app_logo',
+            'app_favicon',
+            'seo_title',
+            'seo_keywords',
+            'seo_author',
+            'seo_image'
+        ];
+        
+        $data = [];
+        foreach ($keys as $key) {
+            $data[$key] = $settingModel->getVal($key, '');
+        }
+        
+        return $this->respond([
+            'status' => 'success',
+            'data'   => $data
+        ]);
+    }
+
+    /**
+     * POST /api/admin/system/settings
+     * Menyimpan pengaturan aplikasi (identitas, logo, favicon, SEO)
+     */
+    public function updateSettings()
+    {
+        $settingModel = new \App\Models\SettingModel();
+        
+        $appName        = $this->request->getPost('app_name');
+        $appSubtitle    = $this->request->getPost('app_subtitle');
+        $appFooter      = $this->request->getPost('app_footer');
+        $appDescription = $this->request->getPost('app_description');
+        $seoTitle       = $this->request->getPost('seo_title');
+        $seoKeywords    = $this->request->getPost('seo_keywords');
+        $seoAuthor      = $this->request->getPost('seo_author');
+        
+        if ($appName !== null) {
+            $settingModel->setVal('app_name', trim($appName), 'identity');
+        }
+        if ($appSubtitle !== null) {
+            $settingModel->setVal('app_subtitle', trim($appSubtitle), 'identity');
+        }
+        if ($appFooter !== null) {
+            $settingModel->setVal('app_footer', trim($appFooter), 'identity');
+        }
+        if ($appDescription !== null) {
+            $settingModel->setVal('app_description', trim($appDescription), 'identity');
+        }
+        if ($seoTitle !== null) {
+            $settingModel->setVal('seo_title', trim($seoTitle), 'seo');
+        }
+        if ($seoKeywords !== null) {
+            $settingModel->setVal('seo_keywords', trim($seoKeywords), 'seo');
+        }
+        if ($seoAuthor !== null) {
+            $settingModel->setVal('seo_author', trim($seoAuthor), 'seo');
+        }
+        
+        $uploadPath = ROOTPATH . 'public/uploads/media/';
+        if (!is_dir($uploadPath)) {
+            mkdir($uploadPath, 0777, true);
+        }
+        
+        // Hapus Logo secara manual jika diminta
+        if ($this->request->getPost('clear_logo') === '1') {
+            $oldLogo = $settingModel->getVal('app_logo');
+            if (!empty($oldLogo)) {
+                $oldLogoPath = ROOTPATH . 'public/' . $oldLogo;
+                if (is_file($oldLogoPath)) {
+                    @unlink($oldLogoPath);
+                }
+            }
+            $settingModel->setVal('app_logo', '', 'identity');
+        }
+        
+        // Hapus Favicon secara manual jika diminta
+        if ($this->request->getPost('clear_favicon') === '1') {
+            $oldFavicon = $settingModel->getVal('app_favicon');
+            if (!empty($oldFavicon)) {
+                $oldFaviconPath = ROOTPATH . 'public/' . $oldFavicon;
+                if (is_file($oldFaviconPath)) {
+                    @unlink($oldFaviconPath);
+                }
+            }
+            $settingModel->setVal('app_favicon', '', 'identity');
+            @unlink(ROOTPATH . 'public/favicon.ico');
+        }
+
+        // Hapus SEO Image secara manual jika diminta
+        if ($this->request->getPost('clear_seo_image') === '1') {
+            $oldSeoImg = $settingModel->getVal('seo_image');
+            if (!empty($oldSeoImg)) {
+                $oldSeoImgPath = ROOTPATH . 'public/' . $oldSeoImg;
+                if (is_file($oldSeoImgPath)) {
+                    @unlink($oldSeoImgPath);
+                }
+            }
+            $settingModel->setVal('seo_image', '', 'seo');
+        }
+        
+        // Handle Logo Upload
+        $logoFile = $this->request->getFile('logo');
+        if ($logoFile && $logoFile->isValid() && !$logoFile->hasMoved()) {
+            $oldLogo = $settingModel->getVal('app_logo');
+            if (!empty($oldLogo)) {
+                $oldLogoPath = ROOTPATH . 'public/' . $oldLogo;
+                if (is_file($oldLogoPath)) {
+                    @unlink($oldLogoPath);
+                }
+            }
+            
+            $logoName = 'logo_' . time() . '_' . $logoFile->getRandomName();
+            $logoFile->move($uploadPath, $logoName);
+            $settingModel->setVal('app_logo', 'uploads/media/' . $logoName, 'identity');
+        }
+        
+        // Handle Favicon Upload
+        $faviconFile = $this->request->getFile('favicon');
+        if ($faviconFile && $faviconFile->isValid() && !$faviconFile->hasMoved()) {
+            $oldFavicon = $settingModel->getVal('app_favicon');
+            if (!empty($oldFavicon)) {
+                $oldFaviconPath = ROOTPATH . 'public/' . $oldFavicon;
+                if (is_file($oldFaviconPath)) {
+                    @unlink($oldFaviconPath);
+                }
+            }
+            
+            $faviconName = 'favicon_' . time() . '_' . $faviconFile->getRandomName();
+            $faviconFile->move($uploadPath, $faviconName);
+            $settingModel->setVal('app_favicon', 'uploads/media/' . $faviconName, 'identity');
+            
+            // Salin ke root public/favicon.ico
+            @copy($uploadPath . $faviconName, ROOTPATH . 'public/favicon.ico');
+        }
+
+        // Handle SEO Image Upload
+        $seoImgFile = $this->request->getFile('seo_image');
+        if ($seoImgFile && $seoImgFile->isValid() && !$seoImgFile->hasMoved()) {
+            $oldSeoImg = $settingModel->getVal('seo_image');
+            if (!empty($oldSeoImg)) {
+                $oldSeoImgPath = ROOTPATH . 'public/' . $oldSeoImg;
+                if (is_file($oldSeoImgPath)) {
+                    @unlink($oldSeoImgPath);
+                }
+            }
+
+            $seoImgName = 'seo_' . time() . '_' . $seoImgFile->getRandomName();
+            $seoImgFile->move($uploadPath, $seoImgName);
+            $settingModel->setVal('seo_image', 'uploads/media/' . $seoImgName, 'seo');
+        }
+        
+        $this->logActivity("Memperbarui pengaturan aplikasi", "Manajemen Sistem");
+        
+        // Ambil data terbaru untuk dikembalikan
+        $keys = [
+            'app_name',
+            'app_subtitle',
+            'app_description',
+            'app_footer',
+            'app_logo',
+            'app_favicon',
+            'seo_title',
+            'seo_keywords',
+            'seo_author',
+            'seo_image'
+        ];
+        $updatedData = [];
+        foreach ($keys as $key) {
+            $updatedData[$key] = $settingModel->getVal($key, '');
+        }
+        
+        return $this->respond([
+            'status'  => 'success',
+            'message' => 'Pengaturan aplikasi berhasil diperbarui.',
+            'data'    => $updatedData
+        ]);
+    }
+
+    /**
      * Membaca versi lokal dari version.json
      */
     private function getLocalVersion(): array
