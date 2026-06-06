@@ -1,0 +1,30 @@
+# Dependency directories
+node_modules/
+backend/vendor/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/dist-ssr/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+backend/.env
+backend/env
+
+# CodeIgniter 4 specific
+backend/writable/*
+!backend/writable/index.html
+!backend/writable/keep
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+*.suo
+Thumbs.db
+
+# Temp keys/files in backend
+backend/key_*.txt
