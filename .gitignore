@@ -1,30 +1,17 @@
-# Dependency directories
-node_modules/
-backend/vendor/
-frontend/node_modules/
+# Production .gitignore
 
-# Build outputs
-frontend/dist/
-frontend/dist-ssr/
+# Ignored development directories (which may reside as leftovers in workspace)
+backend/
+frontend/
+rilis/
+scripts/
 
-# Environment files
+# Ignored production credentials / state
 .env
-.env.local
-.env.*.local
-backend/.env
-backend/env
+writable/*
+!writable/index.html
+!writable/keep
 
-# CodeIgniter 4 specific
-backend/writable/*
-!backend/writable/index.html
-!backend/writable/keep
-
-# IDEs and OS files
-.vscode/
-.idea/
+# System files
 .DS_Store
-*.suo
 Thumbs.db
-
-# Temp keys/files in backend
-backend/key_*.txt
