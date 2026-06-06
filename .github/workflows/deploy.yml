@@ -17,8 +17,6 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -26,7 +24,7 @@ jobs:
           extensions: mbstring, intl, json
 
       - name: Install Composer Dependencies
-        run: composer install --no-dev --optimize-autoloader
+        run: composer update --no-dev --optimize-autoloader
 
       - name: Deploy files via rsync
         run: |
@@ -52,4 +50,3 @@ jobs:
             
             # Melakukan migrasi database (jika ada migrasi baru):
             php spark migrate
-
