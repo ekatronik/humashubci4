@@ -45,6 +45,7 @@ $routes->group('api', function($routes) {
         $routes->get('stats-visual', 'Api\PublicController::statsVisual');
         $routes->get('khatib-schedule', 'Api\PublicController::khatibSchedule');
         $routes->get('settings', 'Api\PublicController::settings');
+        $routes->get('menus', 'Api\PublicController::menus');
         
         // Public Accreditation data
         $routes->get('accreditation/study-programs', 'Api\PublicController::listProdis');
@@ -161,6 +162,13 @@ $routes->group('api', function($routes) {
         $routes->post('khutbah/sermons/(:num)', 'Api\FridaySermon::updateSermon/$1', ['filter' => ['jwt', 'role:khutbah']]);
         $routes->put('khutbah/sermons/(:num)', 'Api\FridaySermon::updateSermon/$1', ['filter' => ['jwt', 'role:khutbah']]);
         $routes->delete('khutbah/sermons/(:num)', 'Api\FridaySermon::deleteSermon/$1', ['filter' => ['jwt', 'role:khutbah']]);
+
+        // ── Master Menu (App Launcher) ────────────────────────────
+        $routes->get('menus', 'Api\AppMenu::index', ['filter' => ['jwt', 'role:system']]);
+        $routes->post('menus', 'Api\AppMenu::create', ['filter' => ['jwt', 'role:system']]);
+        $routes->put('menus/(:num)', 'Api\AppMenu::update/$1', ['filter' => ['jwt', 'role:system']]);
+        $routes->delete('menus/(:num)', 'Api\AppMenu::delete/$1', ['filter' => ['jwt', 'role:system']]);
+        $routes->post('menus/reorder', 'Api\AppMenu::reorder', ['filter' => ['jwt', 'role:system']]);
     });
 });
 
