@@ -201,6 +201,12 @@
           </svg>
           <span>Update & Backup</span>
         </router-link>
+        <router-link v-if="authStore.user?.permissions?.includes('system')" to="/dashboard/master-menu" class="nav-item" active-class="active">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z" />
+          </svg>
+          <span>Master Menu</span>
+        </router-link>
         <router-link v-if="authStore.user?.permissions?.includes('users')" to="/dashboard/users" class="nav-item" active-class="active">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -346,7 +352,13 @@ const toggleModule = (moduleName) => {
   if (sidebarCollapsed.value) {
     sidebarCollapsed.value = false
   }
-  expandedModules.value[moduleName] = !expandedModules.value[moduleName]
+  const isCurrentlyExpanded = expandedModules.value[moduleName]
+  // Setel semua modul ke false (tutup)
+  Object.keys(expandedModules.value).forEach((key) => {
+    expandedModules.value[key] = false
+  })
+  // Hanya buka modul yang sedang diklik jika sebelumnya tertutup
+  expandedModules.value[moduleName] = !isCurrentlyExpanded
 }
 
 const autoExpandActiveModule = () => {
@@ -419,6 +431,7 @@ const pageTitles = {
   'AccreditationReports':  'Laporan Analisis Akreditasi',
   'FathunQaribManager':    'Jadwal Khatib Masjid Fathun Qarib',
   'OtherMosquesManager':   'Jadwal Khutbah Mesjid Lain',
+  'MenuManager':           'Master Menu Aplikasi',
 }
 const pageTitle = computed(() => pageTitles[route.name] || 'Humas Hub')
 
@@ -447,6 +460,7 @@ const moduleBadgeMap = {
   'AccreditationReports':  { label: 'Akreditasi',   color: 'dot-emerald' },
   'FathunQaribManager':    { label: 'Khutbah Jumat', color: 'dot-blue' },
   'OtherMosquesManager':   { label: 'Khutbah Jumat', color: 'dot-blue' },
+  'MenuManager':           { label: 'Sistem',         color: 'dot-slate' },
 }
 const moduleBadge = computed(() => moduleBadgeMap[route.name] || null)
 

@@ -172,6 +172,14 @@ const routes = [
         meta: { requiredPermission: 'system' }
       },
 
+      // ── Master Menu (App Launcher) ───────────────────────
+      {
+        path: 'master-menu',
+        name: 'MenuManager',
+        component: () => import('../views/system/MenuManager.vue'),
+        meta: { requiredPermission: 'system' }
+      },
+
       // ── Manajemen User ────────────────────────────────────
       {
         path: 'users',

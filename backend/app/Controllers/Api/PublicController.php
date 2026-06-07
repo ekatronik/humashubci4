@@ -16,13 +16,15 @@ class PublicController extends BaseApiController
         $q = $this->request->getVar('q') ?? '';
         $type = $this->request->getVar('type') ?? 'all';
 
-        if (empty($q)) {
+        $qClean = trim($q);
+        if (empty($qClean)) {
             return $this->respond([
                 'status' => 'success',
                 'data'   => [
                     'news'          => [],
                     'clippings'     => [],
                     'documentation' => [],
+                    'accreditation' => [],
                     'total_results' => 0
                 ]
             ]);
@@ -32,16 +34,29 @@ class PublicController extends BaseApiController
             'news'          => [],
             'clippings'     => [],
             'documentation' => [],
+            'accreditation' => [],
             'total_results' => 0
         ];
+
+        $terms = array_filter(explode(' ', $qClean));
 
         // 1. Cari di Berita Online
         if ($type === 'all' || $type === 'news') {
             $newsBuilder = $db->table('news_online n');
             $newsBuilder->select('n.id, n.title, n.news_date, n.news_link, m.media_name, n.source_type');
             $newsBuilder->join('media m', 'n.media_id = m.id', 'left');
-            $newsBuilder->like('n.title', $q);
-            $newsBuilder->orLike('n.news_link', $q);
+            
+            if (!empty($terms)) {
+                $newsBuilder->groupStart();
+                    $newsBuilder->groupStart();
+                    foreach ($terms as $term) {
+                        $newsBuilder->like('n.title', $term);
+                    }
+                    $newsBuilder->groupEnd();
+                    $newsBuilder->orLike('n.news_link', $qClean);
+                $newsBuilder->groupEnd();
+            }
+
             $newsBuilder->orderBy('n.news_date', 'DESC');
             $newsBuilder->limit(20);
             $results['news'] = $newsBuilder->get()->getResultArray();
@@ -53,8 +68,23 @@ class PublicController extends BaseApiController
             $clippingsBuilder = $db->table('clippings c');
             $clippingsBuilder->select('c.id, c.title, c.clipping_date, c.summary, m.media_name, c.file_path, c.storage_building, c.storage_room');
             $clippingsBuilder->join('media m', 'c.media_id = m.id', 'left');
-            $clippingsBuilder->like('c.title', $q);
-            $clippingsBuilder->orLike('c.summary', $q);
+            
+            if (!empty($terms)) {
+                $clippingsBuilder->groupStart();
+                    $clippingsBuilder->groupStart();
+                    foreach ($terms as $term) {
+                        $clippingsBuilder->like('c.title', $term);
+                    }
+                    $clippingsBuilder->groupEnd();
+                    
+                    $clippingsBuilder->orGroupStart();
+                    foreach ($terms as $term) {
+                        $clippingsBuilder->like('c.summary', $term);
+                    }
+                    $clippingsBuilder->groupEnd();
+                $clippingsBuilder->groupEnd();
+            }
+
             $clippingsBuilder->orderBy('c.clipping_date', 'DESC');
             $clippingsBuilder->limit(20);
             $results['clippings'] = $clippingsBuilder->get()->getResultArray();
@@ -65,12 +95,57 @@ class PublicController extends BaseApiController
         if ($type === 'all' || $type === 'documentation') {
             $docBuilder = $db->table('documentation d');
             $docBuilder->select('d.id, d.event_name, d.event_date, d.description, d.location_name, d.location_type, d.thumbnail_url, d.news_link');
-            $docBuilder->like('d.event_name', $q);
-            $docBuilder->orLike('d.description', $q);
+            
+            if (!empty($terms)) {
+                $docBuilder->groupStart();
+                    $docBuilder->groupStart();
+                    foreach ($terms as $term) {
+                        $docBuilder->like('d.event_name', $term);
+                    }
+                    $docBuilder->groupEnd();
+                    
+                    $docBuilder->orGroupStart();
+                    foreach ($terms as $term) {
+                        $docBuilder->like('d.description', $term);
+                    }
+                    $docBuilder->groupEnd();
+                $docBuilder->groupEnd();
+            }
+
             $docBuilder->orderBy('d.event_date', 'DESC');
             $docBuilder->limit(20);
             $results['documentation'] = $docBuilder->get()->getResultArray();
             $results['total_results'] += count($results['documentation']);
+        }
+
+        // 4. Cari di Akreditasi Program Studi
+        if ($type === 'all' || $type === 'accreditation') {
+            $prodiBuilder = $db->table('study_programs sp');
+            $prodiBuilder->select('sp.id, sp.nama_prodi, sp.jenjang, sp.akreditasi_sekarang, sp.masa_berlaku, sp.sertifikat_berlaku, sp.website, f.singkatan as singkatan_fakultas');
+            $prodiBuilder->join('faculties f', 'sp.faculty_id = f.id', 'left');
+            
+            if (!empty($terms)) {
+                $prodiBuilder->groupStart();
+                    $prodiBuilder->groupStart();
+                    foreach ($terms as $term) {
+                        $prodiBuilder->like('sp.nama_prodi', $term);
+                    }
+                    $prodiBuilder->groupEnd();
+                    
+                    $prodiBuilder->orGroupStart();
+                    foreach ($terms as $term) {
+                        $prodiBuilder->like('f.nama_fakultas', $term);
+                    }
+                    $prodiBuilder->groupEnd();
+                    
+                    $prodiBuilder->orLike('f.singkatan', $qClean);
+                $prodiBuilder->groupEnd();
+            }
+
+            $prodiBuilder->orderBy('sp.nama_prodi', 'ASC');
+            $prodiBuilder->limit(20);
+            $results['accreditation'] = $prodiBuilder->get()->getResultArray();
+            $results['total_results'] += count($results['accreditation']);
         }
 
         return $this->respond([
@@ -888,4 +963,32 @@ class PublicController extends BaseApiController
             'data'   => $faculties
         ]);
     }
+
+    /**
+     * Mengambil Daftar Menu Aplikasi secara Publik (App Launcher)
+     * GET /api/public/menus
+     */
+    public function menus()
+    {
+        $menuModel = new \App\Models\AppMenuModel();
+        $menus = $menuModel->where('is_active', 1)
+                           ->orderBy('sort_order', 'ASC')
+                           ->findAll();
+
+        // Hanya kirim field yang diperlukan frontend
+        $result = array_map(function($menu) {
+            return [
+                'id'   => (int)$menu['id'],
+                'name' => $menu['name'],
+                'url'  => $menu['url'],
+                'icon' => $menu['icon'],
+            ];
+        }, $menus);
+
+        return $this->respond([
+            'status' => 'success',
+            'data'   => $result
+        ]);
+    }
 }
+

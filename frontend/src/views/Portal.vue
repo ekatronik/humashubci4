@@ -3,16 +3,50 @@
     <!-- ─── NAV BAR ──────────────────────────────────────────── -->
     <header class="portal-nav">
       <div class="nav-container">
-        <div class="nav-brand" @click="navigateToView('home')" style="cursor: pointer;">
-          <div class="brand-logo" :class="{ 'has-img': settings.app_logo }">
-            <img v-if="settings.app_logo" :src="getFileUrl(settings.app_logo)" alt="Logo" class="nav-logo-img">
-            <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
-            </svg>
+        <div class="brand-left-wrapper">
+          <!-- Waffle Menu App Launcher (Google-style) -->
+          <div class="waffle-menu-container">
+            <button class="btn-waffle" @click.stop="toggleWaffleMenu" title="Menu Aplikasi">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="waffle-icon">
+                <rect x="3" y="3" width="4" height="4" rx="1" />
+                <rect x="10" y="3" width="4" height="4" rx="1" />
+                <rect x="17" y="3" width="4" height="4" rx="1" />
+                <rect x="3" y="10" width="4" height="4" rx="1" />
+                <rect x="10" y="10" width="4" height="4" rx="1" />
+                <rect x="17" y="10" width="4" height="4" rx="1" />
+                <rect x="3" y="17" width="4" height="4" rx="1" />
+                <rect x="10" y="17" width="4" height="4" rx="1" />
+                <rect x="17" y="17" width="4" height="4" rx="1" />
+              </svg>
+            </button>
+
+            <!-- Dropdown grid of shortcuts -->
+            <transition name="waffle-fade">
+              <div v-if="showWaffleMenu" class="waffle-dropdown" @click.stop>
+                <div class="waffle-grid">
+                  <div 
+                    v-for="(menu, idx) in dynamicMenus" 
+                    :key="menu.id" 
+                    class="waffle-item" 
+                    @click="clickWaffleMenu(menu)"
+                  >
+                    <div :class="['waffle-item-icon', getShortcutColor(idx)]">
+                      {{ menu.icon || '🔗' }}
+                    </div>
+                    <span class="waffle-item-label">{{ menu.name }}</span>
+                  </div>
+                </div>
+              </div>
+            </transition>
           </div>
-          <div class="brand-text">
-            <span class="main-title">{{ settings.app_name || 'UIN AR-RANIRY' }}</span>
-            <span class="sub-title">{{ settings.app_subtitle || 'Portal Informasi & Data Terpadu' }}</span>
+
+          <div class="nav-brand" @click="navigateToView('home')" style="cursor: pointer;">
+            <div class="brand-logo" :class="{ 'has-img': settings.app_logo }">
+              <img v-if="settings.app_logo" :src="getFileUrl(settings.app_logo)" alt="Logo" class="nav-logo-img">
+              <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
+              </svg>
+            </div>
           </div>
         </div>
 
@@ -24,12 +58,8 @@
           <button class="theme-toggle" @click="toggleTheme" :title="isDarkMode ? 'Mode Terang' : 'Mode Gelap'">
             <span>{{ isDarkMode ? '☀️' : '🌙' }}</span>
           </button>
-          <router-link v-if="!authStore.isAuthenticated" to="/login" class="btn-login">
-            <span>Masuk Admin</span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
-            </svg>
-          </router-link>
+          
+          <!-- Dashboard button removed from frontend header -->
         </div>
       </div>
     </header>
@@ -47,26 +77,43 @@
 
         <!-- Search Bar Container -->
         <div class="search-engine-box">
-          <div class="search-category-select">
-            <select v-model="searchType" class="cat-dropdown">
-              <option value="all">Semua Kategori</option>
-              <option value="news">Berita Online</option>
-              <option value="clippings">Kliping Pers</option>
-              <option value="documentation">Dokumentasi</option>
-              <option value="accreditation">Akreditasi</option>
-            </select>
-          </div>
           <div class="search-input-wrapper">
             <input 
               type="text" 
               v-model="searchQuery" 
-              @keyup.enter="handleSearch"
+              @keyup.enter="handleSearch('internal')"
               placeholder="Ketik kata kunci yang ingin dicari..." 
               class="search-input"
             />
+            <!-- Tombol Mic -->
+            <button 
+              v-if="isSpeechSupported" 
+              type="button" 
+              class="btn-voice-search" 
+              :class="{ active: isListening }"
+              @click="toggleVoiceSearch" 
+              title="Cari dengan suara"
+            >
+              <svg viewBox="0 0 24 24" class="mic-icon" fill="currentColor" width="18" height="18">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+              </svg>
+            </button>
             <button class="btn-clear" v-if="searchQuery" @click="searchQuery = ''">✕</button>
           </div>
-          <button class="btn-search-trigger" @click="handleSearch">
+          
+          <!-- Tombol Google (G) -->
+          <button class="btn-google-search" @click="handleSearch('google_cse')" title="Cari di Seluruh Web Kampus (Google)">
+            <svg class="google-g-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+            </svg>
+            <span class="btn-google-text">Google</span>
+          </button>
+          
+          <!-- Tombol Cari -->
+          <button class="btn-search-trigger" @click="handleSearch('internal')">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.604 10.604Z" />
             </svg>
@@ -85,36 +132,44 @@
 
         <!-- MSN-STYLE SHORTCUT BAR -->
         <div class="msn-shortcut-bar">
-          <div class="shortcut-item" @click="navigateToView('news')">
-            <div class="shortcut-icon bg-green">📰</div>
-            <span class="shortcut-label">Berita Online</span>
-          </div>
-          <div class="shortcut-item" @click="navigateToView('clippings')">
-            <div class="shortcut-icon bg-violet">✂️</div>
-            <span class="shortcut-label">Kliping Koran</span>
-          </div>
-          <div class="shortcut-item" @click="navigateToView('documentation')">
-            <div class="shortcut-icon bg-blue">📸</div>
-            <span class="shortcut-label">Dokumentasi</span>
-          </div>
-          <div class="shortcut-item" @click="navigateToView('rss')">
-            <div class="shortcut-icon bg-amber">📡</div>
-            <span class="shortcut-label">Warta RSS</span>
-          </div>
-          <div class="shortcut-item" @click="navigateToView('accreditation')">
-            <div class="shortcut-icon bg-emerald">🎓</div>
-            <span class="shortcut-label">Akreditasi</span>
-          </div>
-          <div class="shortcut-item" @click="scrollToDataHub">
-            <div class="shortcut-icon bg-red">📊</div>
-            <span class="shortcut-label">Pusat Data</span>
-          </div>
-          <div class="shortcut-item" @click="navigateToView('admin')">
-            <div class="shortcut-icon bg-gray">🔒</div>
-            <span class="shortcut-label">Portal Admin</span>
-          </div>
+          <template v-if="dynamicMenus.length > 0">
+            <div v-for="(menu, idx) in dynamicMenus" :key="menu.id" class="shortcut-item" @click="clickMenu(menu)">
+              <div :class="['shortcut-icon', getShortcutColor(idx)]">{{ menu.icon || '🔗' }}</div>
+              <span class="shortcut-label">{{ menu.name }}</span>
+            </div>
+          </template>
+          <template v-else>
+            <div class="shortcut-item" @click="navigateToView('news')">
+              <div class="shortcut-icon bg-green">📰</div>
+              <span class="shortcut-label">Berita Online</span>
+            </div>
+            <div class="shortcut-item" @click="navigateToView('clippings')">
+              <div class="shortcut-icon bg-violet">✂️</div>
+              <span class="shortcut-label">Kliping Koran</span>
+            </div>
+            <div class="shortcut-item" @click="navigateToView('documentation')">
+              <div class="shortcut-icon bg-blue">📸</div>
+              <span class="shortcut-label">Dokumentasi</span>
+            </div>
+            <div class="shortcut-item" @click="navigateToView('rss')">
+              <div class="shortcut-icon bg-amber">📡</div>
+              <span class="shortcut-label">Warta RSS</span>
+            </div>
+            <div class="shortcut-item" @click="navigateToView('accreditation')">
+              <div class="shortcut-icon bg-emerald">🎓</div>
+              <span class="shortcut-label">Akreditasi</span>
+            </div>
+          </template>
         </div>
 
+      </div>
+
+      <!-- Scroll Down Indicator -->
+      <div class="scroll-down-indicator" @click="scrollToData">
+        <span class="scroll-text">Pusat Data</span>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="scroll-arrow">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
       </div>
     </section>
 
@@ -122,7 +177,7 @@
     <main class="portal-main-grid" v-if="currentView === 'home'">
       
       <!-- ── BARIS 1: PUSAT DATA & GRAFIK (Aceh Studies Style) ── -->
-      <section id="pusat-data" class="data-hub-section full-width">
+      <section id="pusat-data" class="data-hub-section full-width scroll-reveal">
         <div class="section-header">
           <div class="section-title-wrapper">
             <span class="sec-icon">📊</span>
@@ -187,7 +242,7 @@
       <!-- ── BARIS 2: MSN-STYLE WIDGETS GRID ─────────────────── -->
       
       <!-- Widget 1: Khatib Jumat Highlight Fathun Qarib -->
-      <section class="portal-widget khatib-widget flex-2">
+      <section class="portal-widget khatib-widget flex-2 scroll-reveal">
         <div class="widget-header">
           <h3>🕌 Jadwal Khatib Jumat</h3>
           <span class="widget-date-badge">{{ khatibData.date || 'Jumat Ini' }}</span>
@@ -227,7 +282,7 @@
       </section>
 
       <!-- Widget 2: Shalat & Cuaca Combo -->
-      <div class="portal-widget-combo flex-1">
+      <div class="portal-widget-combo flex-1 scroll-reveal">
         
         <!-- Sub-Widget 2A: Jadwal Shalat -->
         <div class="portal-widget shalat-widget">
@@ -307,7 +362,7 @@
       </div>
 
       <!-- Widget 3: SIM Flight Board & Kurs Currency -->
-      <div class="portal-widget-combo flex-1">
+      <div class="portal-widget-combo flex-1 scroll-reveal">
 
         <!-- Sub-Widget 3A: Papan Penerbangan SIM (BTJ) -->
         <div class="portal-widget flight-widget">
@@ -363,7 +418,7 @@
       </div>
 
       <!-- Widget 4: Galeri Foto & Video Dokumentasi Kegiatan -->
-      <section class="portal-widget gallery-widget flex-2">
+      <section class="portal-widget gallery-widget flex-2 scroll-reveal">
         <div class="widget-header">
           <h3>📸 Galeri Foto & Dokumentasi Kegiatan</h3>
           <div class="gallery-filters">
@@ -394,7 +449,7 @@
       </section>
 
       <!-- ── BARIS 3: NEWS AGGREGATOR GRID (Google News Style) ── -->
-      <section class="news-aggregator-section full-width">
+      <section class="news-aggregator-section full-width scroll-reveal">
         <div class="section-header">
           <div class="section-title-wrapper">
             <span class="sec-icon">📰</span>
@@ -1384,21 +1439,40 @@
         
         <!-- Small Search Bar in Results -->
         <div class="results-search-box">
-          <select v-model="searchType" class="results-cat-dropdown">
-            <option value="all">Semua Kategori</option>
-            <option value="news">Berita Online</option>
-            <option value="clippings">Kliping Pers</option>
-            <option value="documentation">Dokumentasi</option>
-            <option value="accreditation">Akreditasi</option>
-          </select>
           <input 
             type="text" 
             v-model="searchQuery" 
-            @keyup.enter="handleSearch"
+            @keyup.enter="handleSearch('internal')"
             placeholder="Ketik kata kunci pencarian..." 
             class="results-search-input"
           />
-          <button class="btn-search-trigger" @click="handleSearch">Cari</button>
+          
+          <!-- Tombol Mic -->
+          <button 
+            v-if="isSpeechSupported" 
+            type="button" 
+            class="btn-voice-search res-voice-btn" 
+            :class="{ active: isListening }"
+            @click="toggleVoiceSearch" 
+            title="Cari dengan suara"
+          >
+            <svg viewBox="0 0 24 24" class="mic-icon" fill="currentColor" width="16" height="16">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
+            </svg>
+          </button>
+          
+          <!-- Tombol Google (G) -->
+          <button class="btn-google-search res-google-btn" @click="handleSearch('google_cse')" title="Cari di Seluruh Web Kampus (Google)">
+            <svg class="google-g-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+            </svg>
+            <span class="btn-google-text">Google</span>
+          </button>
+          
+          <button class="btn-search-trigger" @click="handleSearch('internal')">Cari</button>
         </div>
       </div>
 
@@ -1418,6 +1492,9 @@
           <button :class="['filter-btn', { active: activeResultFilter === 'documentation' }]" @click="activeResultFilter = 'documentation'">
             🔵 Dokumentasi <span class="badge">{{ searchResults.documentation.length }}</span>
           </button>
+          <button :class="['filter-btn', { active: activeResultFilter === 'accreditation' }]" @click="activeResultFilter = 'accreditation'">
+            🎓 Akreditasi Prodi <span class="badge">{{ searchResults.accreditation.length }}</span>
+          </button>
         </aside>
 
         <!-- Main results list -->
@@ -1431,62 +1508,145 @@
             <span>Mencari data ke database...</span>
           </div>
 
-          <div class="results-empty-state" v-else-if="filteredResultsCount === 0">
-            <div class="empty-emoji">🔍</div>
-            <h4>Data tidak ditemukan</h4>
-            <p>Maaf, kami tidak dapat menemukan hasil yang cocok untuk kata kunci pencarian Anda. Coba gunakan kata kunci yang lebih umum.</p>
-          </div>
-
-          <div class="results-list" v-else>
-            <!-- A. Berita Online -->
-            <div class="results-group" v-if="activeResultFilter === 'all' || activeResultFilter === 'news'">
-              <div v-for="res in searchResults.news" :key="'n-' + res.id" class="result-card result-news" @click="openLink(res.news_link)">
-                <div class="rc-header">
-                  <span class="rc-type type-news">Berita Online</span>
-                  <span class="rc-date">{{ formatDate(res.news_date) }}</span>
+          <div v-else>
+            <!-- A. Hasil Pencarian Internal (HumasHub) -->
+            <div class="internal-results-section" v-show="filteredResultsCount > 0">
+              <h4 class="internal-results-title">📂 Hasil Pencarian Internal (HumasHub)</h4>
+              <div class="results-list">
+                <!-- A. Berita Online -->
+                <div class="results-group" v-if="activeResultFilter === 'all' || activeResultFilter === 'news'">
+                  <div v-for="res in searchResults.news" :key="'n-' + res.id" class="result-card result-news" @click="openLink(res.news_link)">
+                    <div class="rc-header">
+                      <span class="rc-type type-news">Berita Online</span>
+                      <span class="rc-date">{{ formatDate(res.news_date) }}</span>
+                    </div>
+                    <h4 v-html="highlightKeyword(res.title, lastSearchQuery)"></h4>
+                    <div class="rc-meta">
+                      <span>Sumber: <strong>{{ res.media_name || 'Rilis Humas' }}</strong></span>
+                      <span>Tipe: {{ res.source_type }}</span>
+                    </div>
+                  </div>
                 </div>
-                <h4 v-html="highlightKeyword(res.title, lastSearchQuery)"></h4>
-                <div class="rc-meta">
-                  <span>Sumber: <strong>{{ res.media_name || 'Rilis Humas' }}</strong></span>
-                  <span>Tipe: {{ res.source_type }}</span>
+
+                <!-- B. Kliping Pers -->
+                <div class="results-group" v-if="activeResultFilter === 'all' || activeResultFilter === 'clippings'">
+                  <div v-for="res in searchResults.clippings" :key="'c-' + res.id" class="result-card result-clippings" @click="navigateToDetail('clippings', res)">
+                    <div class="rc-header">
+                      <span class="rc-type type-clippings">Kliping Pers</span>
+                      <span class="rc-date">{{ formatDate(res.clipping_date) }}</span>
+                    </div>
+                    <h4 v-html="highlightKeyword(res.title, lastSearchQuery)"></h4>
+                    <p v-if="res.summary" v-html="highlightKeyword(res.summary, lastSearchQuery)"></p>
+                    <div class="rc-meta">
+                      <span>Media: <strong>{{ res.media_name }}</strong></span>
+                      <span>Lokasi Fisik: {{ res.storage_building }}, Ruang {{ res.storage_room }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- C. Dokumentasi Kegiatan -->
+                <div class="results-group" v-if="activeResultFilter === 'all' || activeResultFilter === 'documentation'">
+                  <div v-for="res in searchResults.documentation" :key="'d-' + res.id" class="result-card result-doc" @click="navigateToDetail('documentation', res)">
+                    <div class="rc-header">
+                      <span class="rc-type type-doc">Dokumentasi</span>
+                      <span class="rc-date">{{ formatDate(res.event_date) }}</span>
+                    </div>
+                    <h4 v-html="highlightKeyword(res.event_name, lastSearchQuery)"></h4>
+                    <p v-if="res.description" v-html="highlightKeyword(res.description, lastSearchQuery)"></p>
+                    <div class="rc-meta">
+                      <span>Lokasi: {{ res.location_name }} ({{ res.location_type }})</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- D. Akreditasi Program Studi -->
+                <div class="results-group" v-if="activeResultFilter === 'all' || activeResultFilter === 'accreditation'">
+                  <div v-for="res in searchResults.accreditation" :key="'a-' + res.id" class="result-card result-accreditation" @click="openLink(res.website || res.sertifikat_berlaku)">
+                    <div class="rc-header">
+                      <span class="rc-type type-accreditation">Akreditasi Prodi</span>
+                      <span class="rc-date" v-if="res.masa_berlaku">Berlaku s/d: {{ formatDateShort(res.masa_berlaku) }}</span>
+                    </div>
+                    <h4 v-html="highlightKeyword(res.nama_prodi + ' (' + res.jenjang + ')', lastSearchQuery)"></h4>
+                    <div class="rc-details-row" style="margin-top: 6px; font-size: 13px; color: #475569; display: flex; gap: 16px;">
+                      <span>Fakultas: <strong>{{ res.singkatan_fakultas }}</strong></span>
+                      <span>Peringkat: <span class="badge" :class="gradeClass(res.akreditasi_sekarang)" style="display:inline-block; padding: 2px 6px; font-size: 11px;">{{ res.akreditasi_sekarang }}</span></span>
+                    </div>
+                    <div class="rc-meta">
+                      <span v-if="res.website">Website: <strong>{{ res.website }}</strong></span>
+                      <span v-if="res.sertifikat_berlaku">Sertifikat: Tersedia ↗</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- B. Kliping Pers -->
-            <div class="results-group" v-if="activeResultFilter === 'all' || activeResultFilter === 'clippings'">
-              <div v-for="res in searchResults.clippings" :key="'c-' + res.id" class="result-card result-clippings" @click="navigateToDetail('clippings', res)">
-                <div class="rc-header">
-                  <span class="rc-type type-clippings">Kliping Pers</span>
-                  <span class="rc-date">{{ formatDate(res.clipping_date) }}</span>
-                </div>
-                <h4 v-html="highlightKeyword(res.title, lastSearchQuery)"></h4>
-                <p v-if="res.summary" v-html="highlightKeyword(res.summary, lastSearchQuery)"></p>
-                <div class="rc-meta">
-                  <span>Media: <strong>{{ res.media_name }}</strong></span>
-                  <span>Lokasi Fisik: {{ res.storage_building }}, Ruang {{ res.storage_room }}</span>
-                </div>
-              </div>
+            <!-- B. Empty State untuk Pencarian Internal -->
+            <div class="results-empty-state" v-if="filteredResultsCount === 0 && searchType !== 'google_cse'">
+              <div class="empty-emoji">🔍</div>
+              <h4>Data tidak ditemukan</h4>
+              <p>Maaf, kami tidak dapat menemukan hasil yang cocok untuk kata kunci pencarian Anda di database internal. Coba gunakan kata kunci lain.</p>
             </div>
 
-            <!-- C. Dokumentasi Kegiatan -->
-            <div class="results-group" v-if="activeResultFilter === 'all' || activeResultFilter === 'documentation'">
-              <div v-for="res in searchResults.documentation" :key="'d-' + res.id" class="result-card result-doc" @click="navigateToDetail('documentation', res)">
-                <div class="rc-header">
-                  <span class="rc-type type-doc">Dokumentasi</span>
-                  <span class="rc-date">{{ formatDate(res.event_date) }}</span>
-                </div>
-                <h4 v-html="highlightKeyword(res.event_name, lastSearchQuery)"></h4>
-                <p v-if="res.description" v-html="highlightKeyword(res.description, lastSearchQuery)"></p>
-                <div class="rc-meta">
-                  <span>Lokasi: {{ res.location_name }} ({{ res.location_type }})</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
+             <!-- C. Widget Hasil Google CSE -->
+             <div v-show="searchType === 'google_cse' && activeResultFilter === 'all'" class="google-cse-results-container">
+               <!-- Header -->
+               <div class="cse-results-header">
+                 <h4 class="cse-results-title">🌐 Pencarian Web Kampus (Google)</h4>
+                 <span class="cse-badge inline">Hasil Inline</span>
+               </div>
+
+               <!-- Panel Rekomendasi / Pencarian Manual ke Google (Tidak Terbuka Otomatis) -->
+               <div class="cse-recommendation-bar">
+                 <div class="cse-rec-info">
+                   <span class="cse-rec-icon">💡</span>
+                   <span>Menampilkan hasil pencarian untuk kata kunci <strong>"{{ lastSearchQuery }}"</strong> dari seluruh ekosistem web UIN Ar-Raniry.</span>
+                 </div>
+                 <div class="cse-rec-actions">
+                   <a
+                     :href="'https://www.google.com/search?q=' + encodeURIComponent(lastSearchQuery + ' site:ar-raniry.ac.id')"
+                     target="_blank" rel="noopener"
+                     class="cse-rec-btn primary"
+                   >
+                     <svg viewBox="0 0 24 24" width="14" height="14"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/></svg>
+                     Buka di Google.com
+                   </a>
+                   <a
+                     :href="'https://www.google.com/search?q=' + encodeURIComponent(lastSearchQuery + ' site:warta.ar-raniry.ac.id')"
+                     target="_blank" rel="noopener"
+                     class="cse-rec-btn secondary"
+                   >📰 Warta UIN</a>
+                   <a
+                     :href="'https://www.google.com/search?q=' + encodeURIComponent(lastSearchQuery + ' UIN Ar-Raniry')"
+                     target="_blank" rel="noopener"
+                     class="cse-rec-btn secondary"
+                   >🌐 Cari Lebih Luas</a>
+                 </div>
+               </div>
+
+               <!-- Skeleton Loading saat inisialisasi CSE -->
+               <div v-if="cseLoading" class="cse-loading">
+                 <div class="cse-skeleton" v-for="i in 3" :key="i">
+                   <div class="cse-sk-source"></div>
+                   <div class="cse-sk-title"></div>
+                   <div class="cse-sk-body"></div>
+                 </div>
+               </div>
+
+               <!-- Elemen Container Google CSE Resmi -->
+               <div class="cse-widget-wrapper" v-show="!cseLoading">
+                 <div class="gcse-searchresults-only" data-gname="campus-search" data-linktarget="_blank"></div>
+               </div>
+
+               <!-- Internal results teaser -->
+               <div class="cse-internal-teaser" v-if="searchResults.total_results > 0 && !cseLoading" style="margin-top: 20px;">
+                 <div class="cse-teaser-label">ℹ️ Data internal HumasHub ditemukan</div>
+                 <p>Ditemukan <strong>{{ searchResults.total_results }} data</strong> di database internal. Klik filter di sidebar untuk melihat detail.</p>
+               </div>
+             </div>
+           </div>
+         </div>
+       </div>
+     </main>
 
     <!-- ─── FOOTER ───────────────────────────────────────────── -->
     <footer class="portal-footer">
@@ -1499,11 +1659,22 @@
         </div>
       </div>
     </footer>
+    <!-- Voice Search Overlay -->
+    <div class="voice-search-overlay" v-if="isListening" @click="stopVoiceSearch">
+      <div class="voice-search-modal" @click.stop>
+        <div class="voice-wave-container">
+          <div class="voice-wave-bar" v-for="i in 5" :key="i"></div>
+        </div>
+        <h4>Sedang mendengarkan...</h4>
+        <p>Katakan kata kunci pencarian Anda</p>
+        <button class="btn-voice-close" @click="stopVoiceSearch">Batal</button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { Chart, registerables } from 'chart.js'
@@ -1595,10 +1766,16 @@ const searchLoading = ref(false)
 const lastSearchQuery = ref('')
 const activeResultFilter = ref('all')
 
+// Voice Search (Speech Recognition) State
+const isSpeechSupported = ref(false)
+const isListening = ref(false)
+let recognition = null
+
 const searchResults = ref({
   news: [],
   clippings: [],
   documentation: [],
+  accreditation: [],
   total_results: 0
 })
 
@@ -1679,6 +1856,30 @@ const localNewsList = ref([])
 const clippingList = ref([])
 const rssList = ref([])
 const featuredNews = ref(null)
+
+// App Launcher Dynamic Menus
+const dynamicMenus = ref([])
+const showWaffleMenu = ref(false)
+
+const toggleWaffleMenu = () => {
+  showWaffleMenu.value = !showWaffleMenu.value
+}
+
+const closeWaffleMenu = () => {
+  showWaffleMenu.value = false
+}
+
+const clickWaffleMenu = (menu) => {
+  clickMenu(menu)
+  closeWaffleMenu()
+}
+
+const handleGlobalClick = (event) => {
+  const container = document.querySelector('.waffle-menu-container')
+  if (container && !container.contains(event.target)) {
+    closeWaffleMenu()
+  }
+}
 
 // Documentation Gallery state
 const documentationList = ref([])
@@ -2040,6 +2241,7 @@ const filteredResultsCount = computed(() => {
   if (activeResultFilter.value === 'news') return searchResults.value.news.length
   if (activeResultFilter.value === 'clippings') return searchResults.value.clippings.length
   if (activeResultFilter.value === 'documentation') return searchResults.value.documentation.length
+  if (activeResultFilter.value === 'accreditation') return searchResults.value.accreditation.length
   return 0
 })
 
@@ -2096,27 +2298,149 @@ const getStatusClass = (status) => {
   return 'status-blue'
 }
 
+let bodyMutationObserver = null
+
+const startGSEObserver = () => {
+  if (typeof MutationObserver === 'undefined') return
+  if (bodyMutationObserver) bodyMutationObserver.disconnect()
+  
+  bodyMutationObserver = new MutationObserver(() => {
+    const targetContainer = document.querySelector('.google-cse-results-container')
+    const gseOverlay = document.querySelector('.gsc-results-wrapper-overlay')
+    const gseBg = document.querySelector('.gsc-modal-background-image')
+    
+    if (targetContainer) {
+      if (gseOverlay && gseOverlay.parentElement !== targetContainer) {
+        targetContainer.appendChild(gseOverlay)
+      }
+      if (gseBg && gseBg.parentElement !== targetContainer) {
+        targetContainer.appendChild(gseBg)
+      }
+    }
+  })
+  
+  bodyMutationObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+  })
+}
+
+// Google CSE state
+const cseLoading = ref(false)
+const CSE_CX = '81f09a87bde22401c'
+
+const fetchCSEResults = (start = 1) => {
+  if (!lastSearchQuery.value) return
+  
+  cseLoading.value = true
+  
+  // 1. Pastikan script Google CSE dimuat
+  if (!window.__cse_script_loaded) {
+    const gcse = document.createElement('script')
+    gcse.type = 'text/javascript'
+    gcse.async = true
+    gcse.src = 'https://cse.google.com/cse.js?cx=' + CSE_CX
+    const s = document.getElementsByTagName('script')[0]
+    if (s && s.parentNode) {
+      s.parentNode.insertBefore(gcse, s)
+    } else {
+      document.head.appendChild(gcse)
+    }
+    window.__cse_script_loaded = true
+  }
+
+  // Helper untuk melakukan eksekusi pencarian di widget Google CSE
+  const runGoogleSearchWidget = () => {
+    try {
+      if (window.google && window.google.search && window.google.search.cse && window.google.search.cse.element) {
+        const element = window.google.search.cse.element.getElement('campus-search')
+        if (element) {
+          element.execute(lastSearchQuery.value)
+          cseLoading.value = false
+          return true
+        }
+      }
+    } catch (e) {
+      console.error('Error executing CSE search:', e)
+    }
+    return false
+  }
+
+  // Cek secara berkala apakah objek google & element CSE sudah siap untuk dieksekusi
+  let attempts = 0
+  const checkInterval = setInterval(() => {
+    attempts++
+    const success = runGoogleSearchWidget()
+    if (success || attempts > 50) { // maksimal 5 detik
+      clearInterval(checkInterval)
+      cseLoading.value = false
+    }
+  }, 100)
+}
+
+// backward compat
+const loadGoogleCSEScript = () => { fetchCSEResults(1) }
+const extractDomain = (url) => {
+  try { return new URL(url).hostname.replace('www.', '') } catch { return url }
+}
+
+// Voice Search Logic (Web Speech API)
+const initSpeechRecognition = () => {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (SpeechRecognition) {
+    isSpeechSupported.value = true
+    recognition = new SpeechRecognition()
+    recognition.continuous = false
+    recognition.lang = 'id-ID' // Bahasa Indonesia
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onstart = () => {
+      isListening.value = true
+    }
+
+    recognition.onresult = (event) => {
+      const resultText = event.results[0][0].transcript
+      searchQuery.value = resultText
+      isListening.value = false
+      
+      // Jalankan pencarian otomatis setelah jeda singkat agar user bisa melihat teksnya terisi
+      setTimeout(() => {
+        handleSearch('internal')
+      }, 500)
+    }
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error)
+      isListening.value = false
+    }
+
+    recognition.onend = () => {
+      isListening.value = false
+    }
+  }
+}
+
+const toggleVoiceSearch = () => {
+  if (!recognition) return
+  if (isListening.value) {
+    recognition.stop()
+  } else {
+    recognition.start()
+  }
+}
+
+const stopVoiceSearch = () => {
+  if (recognition && isListening.value) {
+    recognition.stop()
+  }
+}
+
 // Global Search trigger
-const handleSearch = () => {
+const handleSearch = (type = 'internal') => {
   if (!searchQuery.value.trim()) return
   const q = searchQuery.value.trim()
-  switch (searchType.value) {
-    case 'news':
-      router.push({ path: '/berita', query: { search: q } })
-      break
-    case 'clippings':
-      router.push({ path: '/kliping', query: { search: q } })
-      break
-    case 'documentation':
-      router.push({ path: '/dokumentasi', query: { search: q } })
-      break
-    case 'accreditation':
-      router.push({ path: '/akreditasi', query: { search: q } })
-      break
-    default:
-      router.push({ path: '/pencarian', query: { q: q, type: searchType.value } })
-      break
-  }
+  router.push({ path: '/pencarian', query: { q: q, type: type } })
 }
 
 const runSearchAPI = async (queryText) => {
@@ -2125,10 +2449,11 @@ const runSearchAPI = async (queryText) => {
   activeResultFilter.value = 'all'
   
   try {
+    const apiType = (searchType.value === 'google_cse' || searchType.value === 'internal') ? 'all' : searchType.value
     const res = await axios.get('/api/public/search', {
       params: {
         q: queryText,
-        type: searchType.value
+        type: apiType
       }
     })
     if (res.data.status === 'success') {
@@ -2138,12 +2463,17 @@ const runSearchAPI = async (queryText) => {
     console.error('Gagal melakukan pencarian:', err)
   } finally {
     searchLoading.value = false
+    if (searchType.value === 'google_cse') {
+      nextTick(() => {
+        fetchCSEResults(1)
+      })
+    }
   }
 }
 
 const quickSearch = (keyword) => {
   searchQuery.value = keyword
-  handleSearch()
+  handleSearch('internal')
 }
 
 const highlightKeyword = (text, keyword) => {
@@ -2524,6 +2854,55 @@ const fetchAggregates = async () => {
     }
   } catch (err) {
     console.error('Gagal mengambil data agregat:', err)
+  }
+}
+
+// Fetch Dynamic Menus for App Launcher
+const fetchDynamicMenus = async () => {
+  try {
+    const res = await axios.get('/api/public/menus')
+    if (res.data.status === 'success') {
+      dynamicMenus.value = res.data.data
+    }
+  } catch (err) {
+    console.error('Gagal mengambil menu aplikasi:', err)
+  }
+}
+
+// Helper to cycle icon background color classes
+const getShortcutColor = (index) => {
+  const colors = ['bg-green', 'bg-violet', 'bg-blue', 'bg-amber', 'bg-red', 'bg-gray']
+  return colors[index % colors.length]
+}
+
+// Navigation handler for dynamic launcher shortcuts
+const clickMenu = (menu) => {
+  if (!menu.url) return
+  if (menu.url.startsWith('http://') || menu.url.startsWith('https://')) {
+    window.open(menu.url, '_blank')
+  } else {
+    // Check if the relative URL matches our route viewNames
+    const pathMap = {
+      '/': 'home',
+      '/berita': 'news',
+      '/kliping': 'clippings',
+      '/dokumentasi': 'documentation',
+      '/rss': 'rss',
+      '/akreditasi': 'accreditation'
+    }
+    const viewName = pathMap[menu.url]
+    if (viewName) {
+      navigateToView(viewName)
+    } else {
+      router.push(menu.url)
+    }
+  }
+}
+
+const scrollToData = () => {
+  const el = document.getElementById('pusat-data')
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth' })
   }
 }
 
@@ -2998,6 +3377,9 @@ watch(() => route, async (newRoute) => {
   if (path === '/') {
     currentView.value = 'home'
     updateSEOMetadata('Cari Informasi Kampus', 'Portal informasi dan data terpadu UIN Ar-Raniry Banda Aceh. Akses berita online, arsip kliping pers, dan dokumentasi kegiatan.')
+    nextTick(() => {
+      initScrollReveal()
+    })
   } else if (path === '/berita') {
     currentView.value = 'news'
     newsFilters.value.search = newRoute.query.search || ''
@@ -3040,7 +3422,7 @@ watch(() => route, async (newRoute) => {
   } else if (path === '/pencarian') {
     currentView.value = 'search'
     const q = newRoute.query.q || ''
-    const t = newRoute.query.type || 'all'
+    const t = newRoute.query.type || 'internal'
     searchQuery.value = q
     searchType.value = t
     updateSEOMetadata(`Hasil Pencarian: "${q}"`, 'Hasil pencarian portal data terpadu UIN Ar-Raniry untuk kata kunci: ' + q)
@@ -3150,11 +3532,41 @@ watch(() => ({
   }
 }, { deep: true })
 
+// Scroll Reveal Observer
+const revealObserver = ref(null)
+const initScrollReveal = () => {
+  if (typeof IntersectionObserver === 'undefined') return
+  if (revealObserver.value) {
+    revealObserver.value.disconnect()
+  }
+  revealObserver.value = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('reveal-visible')
+        revealObserver.value.unobserve(entry.target)
+      }
+    })
+  }, {
+    root: null,
+    rootMargin: '0px 0px -50px 0px',
+    threshold: 0.05
+  })
+  nextTick(() => {
+    const elements = document.querySelectorAll('.scroll-reveal')
+    elements.forEach(el => {
+      el.classList.remove('reveal-visible')
+      revealObserver.value.observe(el)
+    })
+  })
+}
+
 // Lifecycle Hooks
 onMounted(() => {
   fetchSettings()
+  fetchDynamicMenus()
   updateLiveClock()
   liveTimer.value = setInterval(updateLiveClock, 1000)
+  initSpeechRecognition()
   
   setInterval(simulateFlights, 10000)
   
@@ -3169,6 +3581,12 @@ onMounted(() => {
     isDarkMode.value = true
     document.body.classList.add('dark-theme')
   }
+
+  document.addEventListener('click', handleGlobalClick)
+
+  nextTick(() => {
+    initScrollReveal()
+  })
 })
 
 onUnmounted(() => {
@@ -3176,8 +3594,10 @@ onUnmounted(() => {
   if (countdownInterval) clearInterval(countdownInterval)
   if (statsChartInstance) statsChartInstance.destroy()
   if (currencyChartInstance) currencyChartInstance.destroy()
-})
-</script>
+  if (revealObserver.value) revealObserver.value.disconnect()
+  if (bodyMutationObserver) bodyMutationObserver.disconnect()
+  document.removeEventListener('click', handleGlobalClick)
+})</script>
 
 <style scoped>
 /* ─── BASE PORTAL STYLING ──────────────────────────────── */
@@ -3190,6 +3610,7 @@ onUnmounted(() => {
   transition: background-color 0.3s, color 0.3s;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .portal-root.dark-mode {
@@ -3223,6 +3644,124 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.brand-left-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.waffle-menu-container {
+  position: relative;
+}
+
+.btn-waffle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+.portal-root.dark-mode .btn-waffle {
+  color: #94a3b8;
+}
+.btn-waffle:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+.portal-root.dark-mode .btn-waffle:hover {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.waffle-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.waffle-dropdown {
+  position: absolute;
+  top: 52px;
+  left: 0;
+  width: 320px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  z-index: 1000;
+  overflow: hidden;
+}
+.portal-root.dark-mode .waffle-dropdown {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+}
+
+.waffle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 20px;
+}
+
+.waffle-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  padding: 12px 8px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+.waffle-item:hover {
+  background: #f8fafc;
+  transform: translateY(-2px);
+}
+.portal-root.dark-mode .waffle-item:hover {
+  background: #334155;
+}
+
+.waffle-item-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: white;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+
+.waffle-item-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #334155;
+  line-height: 1.3;
+}
+.portal-root.dark-mode .waffle-item-label {
+  color: #cbd5e1;
+}
+
+/* Waffle Transition */
+.waffle-fade-enter-active,
+.waffle-fade-leave-active {
+  transition: all 0.2s ease-out;
+}
+.waffle-fade-enter-from,
+.waffle-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px);
 }
 
 .nav-brand {
@@ -3343,12 +3882,78 @@ onUnmounted(() => {
 /* ─── HERO SEARCH SECTION ───────────────────────────────── */
 .hero-search-section {
   position: relative;
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
   width: 100%;
-  padding: 50px 24px 30px;
+  height: calc(100vh - 68px);
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
   text-align: center;
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Scroll Reveal animation classes */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+.scroll-reveal.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Scroll Down Indicator */
+.scroll-down-indicator {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+.scroll-down-indicator:hover {
+  opacity: 1;
+  transform: translateX(-50%) translateY(2px);
+}
+.scroll-text {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #64748b;
+}
+.portal-root.dark-mode .scroll-text {
+  color: #94a3b8;
+}
+.scroll-arrow {
+  width: 22px;
+  height: 22px;
+  color: #10b981;
+  animation: waffle-bounce 2s infinite;
+}
+@keyframes waffle-bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+  60% {
+    transform: translateY(-3px);
+  }
 }
 
 .hero-bg-glow {
@@ -3366,8 +3971,9 @@ onUnmounted(() => {
 .hero-content {
   position: relative;
   z-index: 1;
-  max-width: 760px;
+  max-width: 860px;
   margin: 0 auto;
+  width: 100%;
 }
 
 .hero-title {
@@ -3401,11 +4007,11 @@ onUnmounted(() => {
 .search-engine-box {
   display: flex;
   background: white;
-  border-radius: 20px;
+  border-radius: 22px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
-  padding: 8px;
-  gap: 8px;
+  padding: 10px 12px;
+  gap: 10px;
   margin-bottom: 24px;
   transition: all 0.3s;
 }
@@ -3423,7 +4029,7 @@ onUnmounted(() => {
 .search-category-select {
   flex-shrink: 0;
   border-right: 1px solid #e2e8f0;
-  padding-right: 8px;
+  padding-right: 12px;
 }
 .portal-root.dark-mode .search-category-select {
   border-right-color: #334155;
@@ -3433,14 +4039,22 @@ onUnmounted(() => {
   border: none;
   background: transparent;
   outline: none;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14.5px;
+  font-weight: 700;
   color: #475569;
-  padding: 12px 14px;
+  padding: 10px 14px;
   cursor: pointer;
+}
+.cat-dropdown option {
+  color: #1e293b;
+  background-color: #ffffff;
 }
 .portal-root.dark-mode .cat-dropdown {
   color: #cbd5e1;
+}
+.portal-root.dark-mode .cat-dropdown option {
+  color: #f1f5f9;
+  background-color: #1e293b;
 }
 
 .search-input-wrapper {
@@ -3455,8 +4069,8 @@ onUnmounted(() => {
   border: none;
   background: transparent;
   outline: none;
-  font-size: 15px;
-  padding: 12px 16px;
+  font-size: 16.5px;
+  padding: 10px 16px;
   color: #1e293b;
 }
 .portal-root.dark-mode .search-input {
@@ -3477,13 +4091,13 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 24px;
+  padding: 12px 28px;
   background: #10b981;
   color: white;
   border: none;
-  border-radius: 14px;
-  font-weight: 700;
-  font-size: 14px;
+  border-radius: 16px;
+  font-weight: 800;
+  font-size: 15px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -3502,6 +4116,7 @@ onUnmounted(() => {
   justify-content: center;
   align-items: center;
   gap: 20px;
+  margin-top: 28px;
   margin-bottom: 24px;
   flex-wrap: wrap;
   overflow-x: auto;
@@ -3696,6 +4311,7 @@ onUnmounted(() => {
   padding: 24px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.015);
   margin-bottom: 32px;
+  min-width: 0;
 }
 .portal-root.dark-mode .charts-dashboard-container {
   background: #1e293b;
@@ -3739,6 +4355,8 @@ onUnmounted(() => {
   min-height: 250px;
   position: relative;
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 .chart-loading-overlay {
   position: absolute;
@@ -3811,6 +4429,8 @@ onUnmounted(() => {
   border-bottom: 1.5px solid #f1f5f9;
   padding-bottom: 12px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .portal-root.dark-mode .widget-header {
   border-bottom-color: #24334a;
@@ -3942,6 +4562,8 @@ onUnmounted(() => {
   color: #64748b;
   border-top: 1px solid rgba(16, 185, 129, 0.15);
   padding-top: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .portal-root.dark-mode .card-footer-info {
   color: #94a3b8;
@@ -4319,6 +4941,8 @@ onUnmounted(() => {
   width: 100%;
   position: relative;
   margin-top: 4px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* ─── NEWS AGGREGATOR (Baris 3) ────────────────────────── */
@@ -4441,7 +5065,7 @@ onUnmounted(() => {
 
 .feeds-grid-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
 }
 .feed-column {
@@ -4579,6 +5203,9 @@ onUnmounted(() => {
 }
 
 .btn-back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: none;
   background: transparent;
   color: #10b981;
@@ -4586,9 +5213,15 @@ onUnmounted(() => {
   font-weight: 800;
   cursor: pointer;
   align-self: flex-start;
+  transition: all 0.2s;
 }
 .btn-back-home:hover {
   color: #059669;
+}
+.btn-back-home svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.5;
 }
 
 /* ─── GOOGLE NEWS ETALASE BERITA ──────────────────────── */
@@ -5684,9 +6317,17 @@ onUnmounted(() => {
   color: #475569;
   border-right: 1px solid #e2e8f0;
 }
+.results-cat-dropdown option {
+  color: #1e293b;
+  background-color: #ffffff;
+}
 .portal-root.dark-mode .results-cat-dropdown {
   color: #cbd5e1;
   border-right-color: #334155;
+}
+.portal-root.dark-mode .results-cat-dropdown option {
+  color: #f1f5f9;
+  background-color: #1e293b;
 }
 
 .results-search-input {
@@ -5875,6 +6516,7 @@ onUnmounted(() => {
 .type-news { background: rgba(16, 185, 129, 0.12); color: #047857; }
 .type-clippings { background: rgba(139, 92, 246, 0.12); color: #6d28d9; }
 .type-doc { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
+.type-accreditation { background: rgba(16, 185, 129, 0.12); color: #047857; }
 
 .rc-date {
   font-size: 11px;
@@ -6192,11 +6834,30 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .nav-container {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+  }
+  .live-clock {
+    display: none !important;
   }
   .hero-search-section {
-    padding: 30px 16px;
+    padding: 20px 16px 50px;
+    height: calc(100vh - 68px);
+    min-height: 540px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  .scroll-down-indicator {
+    bottom: 12px;
+  }
+  .scroll-text {
+    font-size: 9.5px;
+    letter-spacing: 1px;
   }
   .hero-title {
     font-size: 26px;
@@ -6261,6 +6922,27 @@ onUnmounted(() => {
   }
   .ic-meta-grid {
     grid-template-columns: 1fr;
+  }
+  
+  /* Responsive widgets overrides */
+  .other-mosque-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 6px;
+  }
+  .omi-khatib {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+  
+  /* Flight table responsive columns */
+  .flight-thead span:first-child,
+  .flight-row .f-code {
+    display: none !important;
+  }
+  .flight-thead,
+  .flight-row {
+    grid-template-columns: 2fr 1fr 1fr !important;
   }
 }
 
@@ -6767,4 +7449,512 @@ onUnmounted(() => {
 .portal-root.dark-mode .btn-action-outline:hover {
   background: rgba(167, 139, 250, 0.15);
 }
+
+/* ─── DUAL SEARCH BUTTONS STYLING ─── */
+.btn-google-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #ffffff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 14.5px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.btn-google-search:hover {
+  background: #f8f9fa;
+  border-color: #c6c9cc;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+.google-g-logo {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.portal-root.dark-mode .btn-google-search {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.portal-root.dark-mode .btn-google-search:hover {
+  background: #2e3b4e;
+  border-color: #475569;
+}
+
+/* Small Google button on search results page */
+.results-search-box .res-google-btn {
+  background: transparent;
+  border: none;
+  border-left: 1px solid #e2e8f0;
+  border-radius: 0;
+  padding: 0 16px;
+  height: auto;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  box-shadow: none;
+}
+
+.portal-root.dark-mode .results-search-box .res-google-btn {
+  background: transparent;
+  border-left-color: #334155;
+  color: #cbd5e1;
+}
+
+.results-search-box .res-google-btn:hover {
+  background: rgba(0, 0, 0, 0.03);
+  transform: none;
+  box-shadow: none;
+}
+
+.portal-root.dark-mode .results-search-box .res-google-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.results-search-box .btn-search-trigger {
+  border-radius: 0;
+  padding: 0 20px;
+  height: auto;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13.5px;
+}
+
+/* Results section headers styling */
+.internal-results-title, .cse-results-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 10px 0 20px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.portal-root.dark-mode .internal-results-title,
+.portal-root.dark-mode .cse-results-title {
+  color: #94a3b8;
+  border-bottom-color: #2e3a4e;
+}
+
+/* Recommendation Bar */
+.cse-recommendation-bar {
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+.portal-root.dark-mode .cse-recommendation-bar {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.cse-rec-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+.portal-root.dark-mode .cse-rec-info {
+  color: #cbd5e1;
+}
+.cse-rec-info strong {
+  color: #10b981;
+}
+
+.cse-rec-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cse-rec-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+.cse-rec-btn.primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.2);
+}
+.cse-rec-btn.primary:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16,185,129,0.28);
+}
+.cse-rec-btn.secondary {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.portal-root.dark-mode .cse-rec-btn.secondary {
+  background: #0f172a;
+  color: #94a3b8;
+  border-color: #334155;
+}
+.cse-rec-btn.secondary:hover {
+  border-color: #10b981;
+  color: #10b981;
+  background: rgba(16,185,129,0.05);
+}
+
+.cse-widget-wrapper {
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Custom override untuk container google cse agar terlihat rapi dan tidak merusak layout */
+.gsc-control-cse {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+}
+.gsc-webResult.gsc-result {
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 16px 0 !important;
+}
+.portal-root.dark-mode .gsc-webResult.gsc-result {
+  border-bottom-color: #334155 !important;
+}
+
+@media (max-width: 600px) {
+  .cse-rec-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cse-rec-btn {
+    justify-content: center;
+  }
+}
+
+.google-cse-results-container {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+.portal-root.dark-mode .google-cse-results-container {
+  background: #1e293b;
+  border-color: #2e3a4e;
+  box-shadow: none;
+}
+
+/* Header row: title + open in new tab */
+.cse-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #e2e8f0;
+}
+.portal-root.dark-mode .cse-results-header { border-bottom-color: #2e3a4e; }
+/* CSE badge */
+.cse-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16,185,129,0.12);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 20px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* Skeleton Loading */
+.cse-loading { display: flex; flex-direction: column; gap: 16px; }
+.cse-skeleton {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.portal-root.dark-mode .cse-skeleton { background: #131c2e; border-color: #24334a; }
+.cse-sk-source, .cse-sk-title, .cse-sk-body { border-radius: 5px; animation: cse-shimmer 1.4s ease infinite; }
+.cse-sk-source { height: 10px; width: 30%; background: linear-gradient(90deg, #d1fae5 25%, #ecfdf5 50%, #d1fae5 75%); background-size: 400% 100%; }
+.cse-sk-title  { height: 15px; width: 65%; background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 400% 100%; }
+.cse-sk-body   { height: 11px; width: 90%; background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%); background-size: 400% 100%; }
+.portal-root.dark-mode .cse-sk-source { background: linear-gradient(90deg, #064e3b 25%, #065f46 50%, #064e3b 75%); background-size: 400% 100%; }
+.portal-root.dark-mode .cse-sk-title,
+.portal-root.dark-mode .cse-sk-body  { background: linear-gradient(90deg, #1e293b 25%, #2e3a4e 50%, #1e293b 75%); background-size: 400% 100%; }
+@keyframes cse-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+/* Redirect Panel */
+.cse-redirect-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 24px;
+  gap: 20px;
+}
+.cse-redirect-icon {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.05));
+  border: 2px solid rgba(16,185,129,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: #10b981;
+}
+.cse-redirect-icon svg { width: 28px; height: 28px; }
+.cse-redirect-text h5 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+  line-height: 1.4;
+}
+.portal-root.dark-mode .cse-redirect-text h5 { color: #e2e8f0; }
+.cse-redirect-text h5 em { color: #10b981; font-style: normal; }
+.cse-redirect-text p { font-size: 13px; color: #64748b; margin: 0; line-height: 1.6; max-width: 480px; }
+.portal-root.dark-mode .cse-redirect-text p { color: #94a3b8; }
+
+.cse-redirect-actions {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+}
+.cse-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  cursor: pointer;
+  border: none;
+}
+.cse-action-btn.primary {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.25);
+}
+.cse-action-btn.primary:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16,185,129,0.3); }
+.cse-action-btn.secondary {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+.portal-root.dark-mode .cse-action-btn.secondary { background: #1e293b; color: #94a3b8; border-color: #334155; }
+.cse-action-btn.secondary:hover { border-color: #10b981; color: #10b981; background: rgba(16,185,129,0.06); }
+
+/* Internal results teaser */
+.cse-internal-teaser {
+  width: 100%;
+  max-width: 520px;
+  background: rgba(16,185,129,0.06);
+  border: 1px solid rgba(16,185,129,0.2);
+  border-radius: 12px;
+  padding: 14px 18px;
+  text-align: left;
+}
+.cse-teaser-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #10b981;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+.cse-internal-teaser p { font-size: 13px; color: #475569; margin: 0; }
+.portal-root.dark-mode .cse-internal-teaser p { color: #94a3b8; }
+
+/* Voice Search (Mic Button) Styling */
+.btn-voice-search {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.btn-voice-search:hover {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+  transform: scale(1.08);
+}
+.portal-root.dark-mode .btn-voice-search {
+  color: #94a3b8;
+}
+.portal-root.dark-mode .btn-voice-search:hover {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.08);
+}
+
+/* Specific styling for results voice search button */
+.results-search-box .res-voice-btn {
+  margin-right: 0;
+  padding: 0 12px;
+  border-radius: 0;
+  height: auto;
+  align-self: stretch;
+  border-left: 1px solid transparent;
+}
+.results-search-box .res-voice-btn:hover {
+  transform: none;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+/* Voice Search Modal Overlay */
+.voice-search-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fade-in 0.25s ease-out;
+}
+.voice-search-modal {
+  background: #ffffff;
+  padding: 40px 30px;
+  border-radius: 24px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 360px;
+  width: 90%;
+  animation: scale-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.portal-root.dark-mode .voice-search-modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+.voice-search-modal h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+}
+.portal-root.dark-mode .voice-search-modal h4 {
+  color: #f1f5f9;
+}
+.voice-search-modal p {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0 0 28px;
+}
+.portal-root.dark-mode .voice-search-modal p {
+  color: #94a3b8;
+}
+
+/* Sound Wave Animation */
+.voice-wave-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+  margin-bottom: 24px;
+}
+.voice-wave-bar {
+  width: 5px;
+  height: 12px;
+  background: linear-gradient(to top, #10b981, #34d399);
+  border-radius: 3px;
+  animation: voice-bounce 1.0s ease-in-out infinite alternate;
+}
+.voice-wave-bar:nth-child(1) { animation-delay: 0.1s; }
+.voice-wave-bar:nth-child(2) { animation-delay: 0.25s; }
+.voice-wave-bar:nth-child(3) { animation-delay: 0.4s; }
+.voice-wave-bar:nth-child(4) { animation-delay: 0.55s; }
+.voice-wave-bar:nth-child(5) { animation-delay: 0.7s; }
+
+@keyframes voice-bounce {
+  0% { height: 10px; transform: scaleY(1); }
+  100% { height: 48px; transform: scaleY(1.2); }
+}
+
+.btn-voice-close {
+  background: #f1f5f9;
+  color: #475569;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-voice-close:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+.portal-root.dark-mode .btn-voice-close {
+  background: #334155;
+  color: #cbd5e1;
+}
+.portal-root.dark-mode .btn-voice-close:hover {
+  background: #475569;
+  color: #ffffff;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-up {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 600px) {
+  .btn-google-search .btn-google-text { display: none; }
+  .btn-google-search { padding: 12px 14px; }
+  .cse-redirect-actions { flex-direction: column; align-items: stretch; }
+  .cse-action-btn { justify-content: center; }
+}
+</style>
+
+<style>
+/* Global overrides - keep body scroll */
+body.gsc-overflow-hidden { overflow: auto !important; }
 </style>
